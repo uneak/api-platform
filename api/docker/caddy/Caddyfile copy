@@ -27,7 +27,7 @@ log
 
 @pwa_backend expression `(
         {header.Accept}.matches("\\btext/html\\b")
-        && !{path}.matches("(?i)(?:^/api|^/graphql|^/bundles/|^/_profiler|^/_wdt|\\.(?:json|html$|csv$|ya?ml$|xml$))")
+        && {path}.startsWith("/admin")
     )
     || {path} == "/favicon.ico"
     || {path} == "/manifest.json"

@@ -35,6 +35,8 @@ services:
     build:
       context: ./web/backend
       target: api_platform_pwa_prod
+    depends_on:
+      - php
     environment:
       API_PLATFORM_CLIENT_GENERATOR_ENTRYPOINT: http://caddy
       NEXT_PUBLIC_ENTRYPOINT: http://caddy
@@ -43,6 +45,8 @@ services:
     build:
       context: ./web/frontend
       target: api_platform_pwa_prod
+    depends_on:
+      - php
     environment:
       API_PLATFORM_CLIENT_GENERATOR_ENTRYPOINT: http://caddy
       NEXT_PUBLIC_ENTRYPOINT: http://caddy
