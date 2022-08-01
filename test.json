@@ -9,7 +9,7 @@
     "proto": "HTTP/2.0",
     "method": "GET",
     "host": "localhost",
-    "uri": "/docs.jsonld",
+    "uri": "/api/docs.jsonld",
     "headers": {
       "Caddy-Push": ["1"],
       "Accept-Encoding": ["gzip, deflate, br"],
