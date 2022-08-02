@@ -1,6 +1,19 @@
+Build Image
 docker-compose build --pull --no-cache 
+
+Run 
 docker-compose up -d
+
+Stop
 docker-compose down --remove-orphans
+
+consume message:
+docker-compose exec php bin/console messenger:consume async_high async async_low -vv
+
+composer require
+docker-compose exec php composer require amqp-messenger
+docker-compose exec php composer require elasticsearch/elasticsearch
+docker-compose exec php composer require elasticsearch/elasticsearch
 
 
 <h1 align="center"><a href="https://api-platform.com"><img src="https://api-platform.com/logo-250x250.png" alt="API Platform"></a></h1>

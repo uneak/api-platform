@@ -88,6 +88,18 @@ const Welcome = () => (
                 </h3>
               </div>
             </div>
+            <div className="other__bloc">
+              <div className="other__circle">
+                <Mercure/>
+              </div>
+              <div className="other__content">
+                <h3>
+                  <a href="http://localhost:15672/">
+                    RabbitMq console
+                  </a>
+                </h3>
+              </div>
+            </div>
           </div>
         </div>
       </section>

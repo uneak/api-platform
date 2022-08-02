@@ -96,14 +96,62 @@ services:
       # you may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
       # - ./api/docker/db/data:/var/lib/postgresql/data:rw
 
+  rabbitmq:
+    image: "rabbitmq:${RABBITMQ_VERSION:-3.10.6}-management"
+    hostname: "rabbitmq"
+    environment:
+      RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
+      RABBITMQ_DEFAULT_USER: "rabbitmq"
+      RABBITMQ_DEFAULT_PASS: "rabbitmq"
+      RABBITMQ_DEFAULT_VHOST: "/"
+    ports:
+      - "15672:15672"
+      - "5672:5672"
+    labels:
+      NAME: "rabbitmq"
+
+
+  # # https://levelup.gitconnected.com/how-to-run-elasticsearch-8-on-docker-for-local-development-401fd3fff829
+  # elasticsearch:
+  #   image: elasticsearch:${ELASTICSEARCH_VERSION:-8.3.3}
+  #   # image: "docker.elastic.co/elasticsearch/elasticsearch:${ELASTICSEARCH_VERSION:-8.3.3}"
+  #   environment:
+  #     - discovery.type=single-node
+  #     - ES_JAVA_OPTS=-Xms1g -Xmx1g
+  #     - xpack.security.enabled=false
+  #   volumes:
+  #     - elasticsearch_data:/usr/share/elasticsearch/data
+  #   ports:
+  #     - target: 9200
+  #       published: 9200
+  #   networks:
+  #     - elastic
+
+  # kibana:
+  #   image: kibana:${KIBANA_VERSION:-8.3.3}
+  #   ports:
+  #     - target: 5601
+  #       published: 5601
+  #   depends_on:
+  #     - elasticsearch
+  #   networks:
+  #     - elastic
+
+
 # Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
 ###> symfony/mercure-bundle ###
 ###< symfony/mercure-bundle ###
+
+# networks:
+#   elastic:
+#     name: elastic
+#     driver: bridge
 
 volumes:
   php_socket:
   caddy_data:
   caddy_config:
+  # elasticsearch_data:
 ###> doctrine/doctrine-bundle ###
   db_data:
 ###< doctrine/doctrine-bundle ###
