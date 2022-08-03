@@ -7,8 +7,8 @@
 ARG PHP_VERSION=8.1
 ARG CADDY_VERSION=2
 
-# "php" stage
-FROM php:${PHP_VERSION}-fpm-alpine AS api_platform_php
+# "api" stage
+FROM php:${PHP_VERSION}-fpm-alpine AS api_stage
 
 # persistent / runtime deps
 RUN apk add --no-cache \
@@ -33,9 +33,10 @@ RUN set -eux; \
 		libzip-dev \
 		zlib-dev \
 		rabbitmq-c-dev \
-	; \
-	\
-	docker-php-ext-configure zip; \
+	;
+
+
+RUN docker-php-ext-configure zip; \
 	docker-php-ext-install -j$(nproc) \
 		intl \
 		zip \
@@ -124,10 +125,13 @@ ENV SYMFONY_PHPUNIT_VERSION=9
 ENTRYPOINT ["docker-entrypoint"]
 CMD ["php-fpm"]
 
-# "caddy" stage
-# depends on the "php" stage above
-FROM caddy:${CADDY_VERSION}-builder-alpine AS api_platform_caddy_builder
 
+
+
+##
+## "caddy_builder" stage
+##
+FROM caddy:${CADDY_VERSION}-builder-alpine AS caddy_builder_stage
 # install Mercure and Vulcain modules
 RUN xcaddy build \
     --with github.com/dunglas/mercure \
@@ -135,10 +139,15 @@ RUN xcaddy build \
     --with github.com/dunglas/vulcain \
     --with github.com/dunglas/vulcain/caddy
 
-FROM caddy:${CADDY_VERSION} AS api_platform_caddy
 
-WORKDIR /srv/api
-
-COPY --from=api_platform_caddy_builder /usr/bin/caddy /usr/bin/caddy
-COPY --from=api_platform_php /srv/api/public public/
+##
+## "caddy" stage
+##
+FROM caddy:${CADDY_VERSION} AS caddy_stage
+COPY --from=caddy_builder_stage /usr/bin/caddy /usr/bin/caddy
 COPY docker/caddy/Caddyfile /etc/caddy/Caddyfile
+
+RUN mkdir -p /srv/api/public
+# WORKDIR /srv/api
+
+# COPY --from=api_stage /srv/api/public public/

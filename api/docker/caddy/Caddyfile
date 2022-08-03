@@ -1,6 +1,10 @@
 {
     # Debug
     {$DEBUG}
+
+    # email to generate a valid SSL certificate
+    email mgaloyer@uneak.fr
+
     # HTTP/3 support
     servers {
         protocol {
@@ -9,77 +13,23 @@
     }
 }
 
+# Host which Caddy will handle
 {$SERVER_NAME}
 
+# Enable the log
 log
 
-# Matches requests for HTML documents, for static files and for Next.js files,
-# except for known API paths and paths with extensions handled by API Platform
-@pwa_frontend expression `(
-        {header.Accept}.matches("\\btext/html\\b")
-        && !{path}.matches("(?i)(?:^/api|^/admin|^/graphql|^/bundles/|^/_profiler|^/_wdt|\\.(?:json|html$|csv$|ya?ml$|xml$))")
-    )
-    || {path} == "/favicon.ico"
-    || {path} == "/manifest.json"
-    || {path} == "/robots.txt"
-    || {path}.startsWith("/_next")
-    || {path}.startsWith("/sitemap")`
+# On indique quel sera le dossier racine du serveur web
+root * /srv/api/public
 
-@pwa_backend expression `(
-        {header.Accept}.matches("\\btext/html\\b")
-        && !{path}.matches("(?i)(?:^/api|^/graphql|^/bundles/|^/_profiler|^/_wdt|\\.(?:json|html$|csv$|ya?ml$|xml$))")
-    )
-    || {path} == "/favicon.ico"
-    || {path} == "/manifest.json"
-    || {path} == "/robots.txt"
-    || {path}.startsWith("/_next")
-    || {path}.startsWith("/sitemap")`
+# On indique à Caddy où sera interprété le PHP
+# php_fastcgi api:9000
+php_fastcgi unix//var/run/php/php-fpm.sock
+
+encode gzip zstd
+file_server
 
 
-route {
-    root * /srv/api/public
-    mercure {
-        # Transport to use (default to Bolt)
-        transport_url {$MERCURE_TRANSPORT_URL:bolt:///data/mercure.db}
-        # Publisher JWT key
-        publisher_jwt {env.MERCURE_PUBLISHER_JWT_KEY} {env.MERCURE_PUBLISHER_JWT_ALG}
-        # Subscriber JWT key
-        subscriber_jwt {env.MERCURE_SUBSCRIBER_JWT_KEY} {env.MERCURE_SUBSCRIBER_JWT_ALG}
-        # Allow anonymous subscribers (double-check that it's what you want)
-        anonymous
-        # Enable the subscription API (double-check that it's what you want)
-        subscriptions
-        # Extra directives
-        {$MERCURE_EXTRA_DIRECTIVES}
-    }
-    vulcain
-    
-    # desactivé par uneak
-    # issue : https://github.com/api-platform/api-platform/issues/1825
-    # doc : https://caddyserver.com/docs/caddyfile/directives/push
-    #
-    # push
-
-    # Add links to the API docs and to the Mercure Hub if not set explicitly (e.g. the PWA)
-    header ?Link `</docs.jsonld>; rel="http://www.w3.org/ns/hydra/core#apiDocumentation", </.well-known/mercure>; rel="mercure"`
-    # Disable Google FLOC tracking if not enabled explicitly: https://plausible.io/blog/google-floc
-    header ?Permissions-Policy "interest-cohort=()"
-
-    # Comment the following line if you don't want Next.js to catch requests for HTML documents.
-    # In this case, they will be handled by the PHP app.
-    # reverse_proxy @pwa http://{$WEB_BACKEND_UPSTREAM}
-    # reverse_proxy @pwa http://{$WEB_FRONTEND_UPSTREAM}
-
-    # handle_path /admin* {
-		reverse_proxy @pwa_backend http://{$WEB_BACKEND_UPSTREAM}
-	# }
-
-	# handle {
-		reverse_proxy @pwa_frontend http://{$WEB_FRONTEND_UPSTREAM}
-	# }
 
 
-    php_fastcgi unix//var/run/php/php-fpm.sock
-    encode zstd gzip
-    file_server
-}
+

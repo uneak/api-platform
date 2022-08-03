@@ -1,15 +1,21 @@
 version: "3.4"
 
 services:
-  php:
+  api:
+    container_name: api
+    image: uneakproject-api:latest
     build:
       context: ./api
-      target: api_platform_php
+      target: api_stage
     depends_on:
       - database
     restart: unless-stopped
     volumes:
-      - php_socket:/var/run/php
+      - socket_data:/var/run/php
+      - ./api:/srv/api:rw,cached
+      - ./api/docker/php/conf.d/api-platform.dev.ini:/usr/local/etc/php/conf.d/api-platform.ini
+      # if you develop on Linux, you may use a bind-mounted host directory instead
+      # - ./api/var:/srv/api/var:rw
     healthcheck:
       interval: 10s
       timeout: 3s
@@ -22,41 +28,45 @@ services:
       MERCURE_URL: ${CADDY_MERCURE_URL:-http://caddy/.well-known/mercure}
       MERCURE_PUBLIC_URL: https://${SERVER_NAME:-localhost}/.well-known/mercure
       MERCURE_JWT_SECRET: ${CADDY_MERCURE_JWT_SECRET:-!ChangeMe!}
+    ports:
+      - 9000:9000
 
-  # pwa:
+  # web-backend:
+  #   container_name: web-backend
+  #   image: uneakproject-web-backend:latest
   #   build:
-  #     context: ./pwa
-  #     target: api_platform_pwa_prod
+  #     context: ./web/backend
+  #     target: pwa_dev_stage
+  #   depends_on:
+  #     - api
   #   environment:
   #     API_PLATFORM_CLIENT_GENERATOR_ENTRYPOINT: http://caddy
   #     NEXT_PUBLIC_ENTRYPOINT: http://caddy
-  
-  web-backend:
-    build:
-      context: ./web/backend
-      target: api_platform_pwa_prod
-    depends_on:
-      - php
-    environment:
-      API_PLATFORM_CLIENT_GENERATOR_ENTRYPOINT: http://caddy
-      NEXT_PUBLIC_ENTRYPOINT: http://caddy
+  #   volumes:
+  #     - ./web/backend:/usr/src/pwa:rw,cached
 
-  web-frontend:
-    build:
-      context: ./web/frontend
-      target: api_platform_pwa_prod
-    depends_on:
-      - php
-    environment:
-      API_PLATFORM_CLIENT_GENERATOR_ENTRYPOINT: http://caddy
-      NEXT_PUBLIC_ENTRYPOINT: http://caddy
+  # web-frontend:
+  #   container_name: web-frontend
+  #   image: uneakproject-web-frontend:latest
+  #   build:
+  #     context: ./web/frontend
+  #     target: pwa_dev_stage
+  #   depends_on:
+  #     - api
+  #   environment:
+  #     API_PLATFORM_CLIENT_GENERATOR_ENTRYPOINT: http://caddy
+  #     NEXT_PUBLIC_ENTRYPOINT: http://caddy
+  #   volumes:
+  #     - ./web/frontend:/usr/src/pwa:rw,cached
 
   caddy:
+    container_name: caddy
+    image: uneakproject-caddy:latest
     build:
-      context: api/
-      target: api_platform_caddy
+      context: ./api
+      target: caddy_stage
     depends_on:
-      - php
+      - api
       - web-backend
       - web-frontend
     environment:
@@ -67,9 +77,11 @@ services:
       MERCURE_SUBSCRIBER_JWT_KEY: ${CADDY_MERCURE_JWT_SECRET:-!ChangeMe!}
     restart: unless-stopped
     volumes:
-      - php_socket:/var/run/php
+      - socket_data:/var/run/php
       - caddy_data:/data
       - caddy_config:/config
+      - ./api/docker/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./api:/srv/api:ro
     ports:
       # HTTP
       - target: 80
@@ -85,6 +97,7 @@ services:
         protocol: udp
 
   database:
+    container_name: database
     image: postgres:${POSTGRES_VERSION:-13}-alpine
     environment:
       - POSTGRES_DB=${POSTGRES_DB:-api}
@@ -95,21 +108,23 @@ services:
       - db_data:/var/lib/postgresql/data:rw
       # you may use a bind-mounted host directory instead, so that it is harder to accidentally remove the volume and lose all your data!
       # - ./api/docker/db/data:/var/lib/postgresql/data:rw
-
-  rabbitmq:
-    image: "rabbitmq:${RABBITMQ_VERSION:-3.10.6}-management"
-    hostname: "rabbitmq"
-    environment:
-      RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
-      RABBITMQ_DEFAULT_USER: "rabbitmq"
-      RABBITMQ_DEFAULT_PASS: "rabbitmq"
-      RABBITMQ_DEFAULT_VHOST: "/"
     ports:
-      - "15672:15672"
-      - "5672:5672"
-    labels:
-      NAME: "rabbitmq"
+      - "5432:5432/tcp"
 
+  # rabbitmq:
+  #   container_name: rabbitmq
+  #   image: "rabbitmq:${RABBITMQ_VERSION:-3.10.6}-management"
+  #   hostname: "rabbitmq"
+  #   environment:
+  #     RABBITMQ_ERLANG_COOKIE: "SWQOKODSQALRPCLNMEQG"
+  #     RABBITMQ_DEFAULT_USER: "rabbitmq"
+  #     RABBITMQ_DEFAULT_PASS: "rabbitmq"
+  #     RABBITMQ_DEFAULT_VHOST: "/"
+  #   ports:
+  #     - "15672:15672"
+  #     - "5672:5672"
+  #   labels:
+  #     NAME: "rabbitmq"
 
   # # https://levelup.gitconnected.com/how-to-run-elasticsearch-8-on-docker-for-local-development-401fd3fff829
   # elasticsearch:
@@ -138,22 +153,22 @@ services:
   #     - elastic
 
 
-# Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
-###> symfony/mercure-bundle ###
-###< symfony/mercure-bundle ###
+  # Mercure is installed as a Caddy module, prevent the Flex recipe from installing another service
+  ###> symfony/mercure-bundle ###
+  ###< symfony/mercure-bundle ###
 
-# networks:
-#   elastic:
-#     name: elastic
-#     driver: bridge
+  # networks:
+  #   elastic:
+  #     name: elastic
+  #     driver: bridge
 
 volumes:
-  php_socket:
+  socket_data:
   caddy_data:
-  caddy_config:
-  # elasticsearch_data:
-###> doctrine/doctrine-bundle ###
+  caddy_config: # elasticsearch_data:
+
+  ###> doctrine/doctrine-bundle ###
   db_data:
-###< doctrine/doctrine-bundle ###
-###> symfony/mercure-bundle ###
-###< symfony/mercure-bundle ###
+    ###< doctrine/doctrine-bundle ###
+    ###> symfony/mercure-bundle ###
+    ###< symfony/mercure-bundle ###
